@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-commerce Analytics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background-color: #f5f3ef; /* light cream-brown */
+            color: #3e2c23;
+        }
+
+        h1, h5 {
+            color: #4e342e; /* deep brown */
+        }
+
+        .card {
+            background-color: #fffaf5; /* light brownish white */
+            border: 1px solid #d2b48c;
+            box-shadow: 0 4px 6px rgba(100, 50, 20, 0.1);
+        }
+
+        .card-header {
+            background-color: #d7ccc8; /* soft brown-gray */
+            color: #3e2723;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background-color: #6d4c41;
+            border-color: #5d4037;
+        }
+
+        .btn-primary:hover {
+            background-color: #5d4037;
+            border-color: #4e342e;
+        }
+
+        .btn-secondary {
+            background-color: #a1887f;
+            border-color: #8d6e63;
+            color: #fff;
+        }
+
+        .btn-secondary:hover {
+            background-color: #8d6e63;
+        }
+
+        .btn-success {
+            background-color: #795548;
+            border-color: #6d4c41;
+        }
+
+        .btn-success:hover {
+            background-color: #5d4037;
+        }
+
+        .table-striped > tbody > tr:nth-of-type(odd) {
+            background-color: #fceee0;
+        }
+
+        .chart-container {
+            background-color: #fffaf5;
+            border: 1px solid #d2b48c;
+            padding: 1rem;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center mb-4">🛒 AI E-commerce Data Agent</h1>
+
+        <div class="card">
+            <div class="card-header">
+                <h5>Ask a question about your e-commerce data</h5>
+            </div>
+            <div class="card-body">
+                <form id="chat-form" method="post" action="/ask">
+                    <input type="hidden" name="session_id" value="{{ session_id }}">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" name="question" placeholder="Example: What were the top 5 products by sales last month?" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Ask</button>
+                    <button type="submit" formaction="/clear" class="btn btn-secondary">Clear Session</button>
+                    <button type="submit" formaction="/export" class="btn btn-success">Export Session</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            {% for item in history %}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between">
+                    <span><strong>Question:</strong> {{ item.question }}</span>
+                    <small class="text-muted">{{ item.time }}</small>
+                </div>
+                <div class="card-body">
+                    <h5>SQL Query:</h5>
+                    <pre><code>{{ item.sql }}</code></pre>
+
+                    <h5>Explanation:</h5>
+                    <p>{{ item.explanation }}</p>
+
+                    <h5>Results:</h5>
+                    {% if item.result is string %}
+                        <p>{{ item.result }}</p>
+                    {% else %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        {% for key in item.result[0].keys() %}
+                                        <th>{{ key }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in item.result %}
+                                    <tr>
+                                        {% for value in row.values() %}
+                                        <td>{{ value }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if item.chart_data %}
+                        <div class="mt-4">
+                            <h5>Visualization:</h5>
+                            <div class="chart-container">
+                                <canvas id="chart-{{ loop.index }}"></canvas>
+                            </div>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function () {
+                                    const ctx = document.getElementById('chart-{{ loop.index }}');
+                                    new Chart(ctx, {
+                                        type: '{{ item.chart_type }}',
+                                        data: {
+                                            labels: {{ item.chart_data.labels | tojson }},
+                                            datasets: [{
+                                                label: '{{ item.chart_data.label }}',
+                                                data: {{ item.chart_data.values | tojson }},
+                                                backgroundColor: [
+                                                    'rgba(141, 110, 99, 0.2)',
+                                                    'rgba(161, 136, 127, 0.2)',
+                                                    'rgba(188, 170, 164, 0.2)',
+                                                    'rgba(109, 76, 65, 0.2)',
+                                                    'rgba(78, 52, 46, 0.2)'
+                                                ],
+                                                borderColor: [
+                                                    'rgba(141, 110, 99, 1)',
+                                                    'rgba(161, 136, 127, 1)',
+                                                    'rgba(188, 170, 164, 1)',
+                                                    'rgba(109, 76, 65, 1)',
+                                                    'rgba(78, 52, 46, 1)'
+                                                ],
+                                                borderWidth: 1
+                                            }]
+                                        },
+                                        options: {
+                                            responsive: true,
+                                            maintainAspectRatio: false,
+                                            scales: {
+                                                y: {
+                                                    beginAtZero: true
+                                                }
+                                            }
+                                        }
+                                    });
+                                });
+                            </script>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
